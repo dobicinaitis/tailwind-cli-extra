@@ -1,0 +1,190 @@
+name: Create a new release
+on:
+  workflow_call:
+    secrets:
+      ACTIONS_TOKEN:
+        required: true
+  workflow_dispatch:
+
+jobs:
+  # Re-package Tailwind CSS standalone CLI
+  build-patched-cli:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.GITHUB_REF }}
+
+      - name: Get latest changes # workaround to get the commits just pushed by the calling workflow 🤨
+        run: |
+          git fetch
+          git checkout ${GITHUB_REF##*/}
+          git pull
+
+      - name: Load properties file
+        run: |
+          while read -r property; do
+              [[ -n "$property" && "$property" != [[:blank:]#]* ]] && echo "$property" >> $GITHUB_ENV
+          done < properties.env
+
+      - name: Validate properties
+        run: |
+          source utils/bash_functions.sh
+          check_variable TAILWIND_REPOSITORY
+          check_variable DAISYUI_REPOSITORY
+          check_variable TAILWIND_CURRENT_STANDALONE_JS_CHECKSUM
+          check_variable TAILWIND_CURRENT_RELEASE_WORKFLOW_CHECKSUM
+          check_version_number $TAILWIND_CURRENT_VERSION
+          check_version_number $DAISYUI_CURRENT_VERSION
+
+      - name: Checkout Tailwind CSS source code
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TAILWIND_REPOSITORY }}
+          ref: v${{ env.TAILWIND_CURRENT_VERSION }}
+          path: 'tailwindcss'
+
+      - name: Check for important build file changes
+        run: |
+          TAILWIND_LATEST_STANDALONE_JS_CHECKSUM=$(sha256sum tailwindcss/standalone-cli/standalone.js | awk '{print $1}')
+          TAILWIND_LATEST_RELEASE_WORKFLOW_CHECKSUM=$(sha256sum tailwindcss/.github/workflows/prepare-release.yml | awk '{print $1}')
+          if [ "$TAILWIND_CURRENT_STANDALONE_JS_CHECKSUM" != "$TAILWIND_LATEST_STANDALONE_JS_CHECKSUM" ]; then
+            FILENAME="standalone.js"
+            NEW_CHECKSUM="$TAILWIND_LATEST_STANDALONE_JS_CHECKSUM"
+          elif [ "$TAILWIND_CURRENT_RELEASE_WORKFLOW_CHECKSUM" != "$TAILWIND_LATEST_RELEASE_WORKFLOW_CHECKSUM" ]; then
+            FILENAME="prepare-release.yml"
+            NEW_CHECKSUM="$TAILWIND_LATEST_RELEASE_WORKFLOW_CHECKSUM"
+          else
+            FILENAME=""
+          fi
+          # Create a lock and cancel the run if any of the files we care about have changed and require manual verification.
+          if [ -n "$FILENAME" ]; then
+            echo "## :eyes: Manual verification required " >> $GITHUB_STEP_SUMMARY
+            printf -v MESSAGE '%s' \
+                "File <code>$FILENAME</code> has been updated in Tailwind CSS repository for release <code>$TAILWIND_CURRENT_VERSION</code>. " \
+                "New checksum: <code>$NEW_CHECKSUM</code>.<br/>" \
+                "Please check if changes to this file require adjustments to the Release Workflow " \
+                "and update its current checksum in <code>properties.env</code>."
+            echo "$MESSAGE" >> $GITHUB_STEP_SUMMARY
+            gh variable set WORKFLOW_LOCK_REASON --body "$MESSAGE"
+            gh run cancel --repo ${{ github.repository }} ${{ github.run_id }}
+            sleep 10
+            exit 1
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+
+      # ⬇️ Start building & re-packaging the Tailwind CSS standalone CLI
+      - name: Use Node.js 16
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Use the `stable` engine
+        run: |
+          node ./scripts/swap-engines.js
+        working-directory: tailwindcss
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: tailwindcss
+
+      - name: Build Tailwind CSS
+        run: npm run build
+        working-directory: tailwindcss
+
+      - name: Install standalone cli dependencies
+        run: npm install
+        working-directory: tailwindcss/standalone-cli
+
+      - name: Add the daisyUI dependency
+        run: npm install -D daisyui@$DAISYUI_CURRENT_VERSION
+        working-directory: tailwindcss/standalone-cli
+
+      - name: Add daisyUI to standalone.js
+        run: |
+          sed -i "/let localModules/a \  daisyui: require('daisyui')," standalone.js
+        working-directory: tailwindcss/standalone-cli
+
+      - name: Build standalone cli
+        run: npm run build
+        working-directory: tailwindcss/standalone-cli
+
+      - name: Rename binaries
+        run: |
+          mv tailwindcss-linux-arm64 tailwindcss-extra-linux-arm64
+          mv tailwindcss-linux-armv7 tailwindcss-extra-linux-armv7
+          mv tailwindcss-linux-x64 tailwindcss-extra-linux-x64
+          mv tailwindcss-macos-arm64 tailwindcss-extra-macos-arm64
+          mv tailwindcss-macos-x64 tailwindcss-extra-macos-x64
+          mv tailwindcss-windows-x64.exe tailwindcss-extra-windows-x64.exe
+          mv tailwindcss-windows-arm64.exe tailwindcss-extra-windows-arm64.exe
+        working-directory: tailwindcss/standalone-cli/dist
+
+      - name: Test
+        run: |
+          cp ../tailwindcss/standalone-cli/dist/tailwindcss-extra-linux-x64 tailwindcss-extra
+          chmod +x tailwindcss-extra
+          ./tailwindcss-extra --content daisyui-components.html | grep badge-primary || exit 1
+          ./tailwindcss-extra --content daisyui-components.html | grep loading-dots || exit 1
+          ./tailwindcss-extra --content daisyui-components.html | grep progress  || exit 1
+        working-directory: test
+
+      - name: Save release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tailwindcss-extra
+          path: tailwindcss/standalone-cli/dist/tailwindcss-extra-*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Create a new release
+  create-release:
+    runs-on: ubuntu-latest
+    needs: build-patched-cli
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.GITHUB_REF }}
+          fetch-depth: 0
+
+      - name: Get latest changes # workaround (see above)
+        run: |
+          RELEASE_BRANCH="${GITHUB_REF##*/}"
+          git checkout $RELEASE_BRANCH
+          git pull
+          echo "RELEASE_BRANCH=$RELEASE_BRANCH" >> $GITHUB_ENV
+
+      - name: Calculate next version
+        id: semver
+        uses: ietf-tools/semver-action@v1
+        with:
+          token: ${{ github.token }}
+          branch: ${{ env.RELEASE_BRANCH }}
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tailwindcss-extra
+          run-id: ${{ github.run_id }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create changelog
+        run: |
+          source utils/bash_functions.sh
+          print_changelog > CHANGELOG.md
+          print_version_table >> CHANGELOG.md
+          print_download_list "${{ steps.semver.outputs.next }}" >> CHANGELOG.md
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.semver.outputs.next }}" \
+            --notes-file CHANGELOG.md \
+            tailwindcss-extra-*

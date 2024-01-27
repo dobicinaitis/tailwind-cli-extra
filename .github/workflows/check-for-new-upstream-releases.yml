@@ -1,0 +1,117 @@
+name: Check for new upstream releases
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *" # 4 times a day
+permissions:
+  contents: write
+
+env:
+  LOCK_REASON: ${{ vars.WORKFLOW_LOCK_REASON }}
+
+jobs:
+  # Check for new upstream releases
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      release-tailwind: ${{ steps.check-tailwind.outputs.release }}
+      release-daisyui: ${{ steps.check-daisyui.outputs.release }}
+    steps:
+      - name: Check if workflow is locked
+        run: |
+          if [ -n "$LOCK_REASON" ]; then
+            echo "## :lock: Workflow is locked!" >> $GITHUB_STEP_SUMMARY
+            echo "Will not check for new upstream releases." >> $GITHUB_STEP_SUMMARY
+            echo "### Reason" >> $GITHUB_STEP_SUMMARY
+            echo "$LOCK_REASON" >> $GITHUB_STEP_SUMMARY
+            # cancel the workflow run
+            gh run cancel --repo ${{ github.repository }} ${{ github.run_id }}
+            sleep 10
+            exit 1
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.GITHUB_REF }}
+
+      - name: Load properties file
+        run: |
+          while read -r property; do
+              [[ -n "$property" && "$property" != [[:blank:]#]* ]] && echo "$property" >> $GITHUB_ENV
+          done < properties.env
+
+      - name: Validate repository properties
+        run: |
+          source utils/bash_functions.sh
+          check_variable TAILWIND_REPOSITORY
+          check_variable DAISYUI_REPOSITORY
+
+      - name: Get Tailwind CSS version
+        run: |
+          echo "TAILWIND_LATEST_VERSION=$(curl -s https://api.github.com/repos/$TAILWIND_REPOSITORY/releases/latest \
+          | jq -r '.tag_name[1:]')" >> $GITHUB_ENV
+
+      - name: Get daisyUI version
+        run: |
+          echo "DAISYUI_LATEST_VERSION=$(curl -s https://api.github.com/repos/$DAISYUI_REPOSITORY/releases/latest \
+          | jq -r '.tag_name[1:]')" >> $GITHUB_ENV
+
+      - name: Validate version properties
+        run: |
+          source utils/bash_functions.sh
+          check_variable TAILWIND_CURRENT_VERSION
+          check_variable TAILWIND_LATEST_VERSION
+          check_variable DAISYUI_CURRENT_VERSION
+          check_variable DAISYUI_LATEST_VERSION
+
+      - name: Configure Git committer identity
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "<>"
+
+      - name: Check if Tailwind CSS was released
+        id: check-tailwind
+        run: |
+          source utils/bash_functions.sh
+          compare_versions tailwind $TAILWIND_CURRENT_VERSION $TAILWIND_LATEST_VERSION
+          if [ "$TAILWIND_VERSION_CHANGED" = "true" ]; then
+            sed -i "s/TAILWIND_CURRENT_VERSION=.*/TAILWIND_CURRENT_VERSION=$TAILWIND_LATEST_VERSION/g" properties.env
+            sed -i -e "/tailwindcss/ s/$TAILWIND_CURRENT_VERSION/$TAILWIND_LATEST_VERSION/g" readme.md
+            COMMIT_TYPE="$(semver_increment_to_conventional_commit_type $TAILWIND_VERSION_CHANGE_LEVEL)"
+            git commit -am "${COMMIT_TYPE}: bumped Tailwind CSS version to $TAILWIND_LATEST_VERSION ($TAILWIND_VERSION_CHANGE_LEVEL)"
+            git push
+            echo "release=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if daisyUI was released
+        id: check-daisyui
+        run: |
+          source utils/bash_functions.sh
+          compare_versions daisyUI $DAISYUI_CURRENT_VERSION $DAISYUI_LATEST_VERSION
+          if [ "$DAISYUI_VERSION_CHANGED" = "true" ]; then
+            sed -i "s/DAISYUI_CURRENT_VERSION=.*/DAISYUI_CURRENT_VERSION=$DAISYUI_LATEST_VERSION/g" properties.env
+            sed -i -e "/daisyui/ s/$DAISYUI_CURRENT_VERSION/$DAISYUI_LATEST_VERSION/g" readme.md
+            COMMIT_TYPE="$(semver_increment_to_conventional_commit_type $DAISYUI_VERSION_CHANGE_LEVEL)"
+            git commit -am "${COMMIT_TYPE}: bumped daisyUI version to $DAISYUI_LATEST_VERSION ($DAISYUI_VERSION_CHANGE_LEVEL)"
+            git push
+            echo "release=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Add versions to summary
+        run: |
+          echo "## :page_facing_up: Versions " >> $GITHUB_STEP_SUMMARY
+          echo "| | Used | Latest |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tailwind CSS | $TAILWIND_CURRENT_VERSION | $TAILWIND_LATEST_VERSION |" >> $GITHUB_STEP_SUMMARY
+          echo "| daisyUI | $DAISYUI_CURRENT_VERSION | $DAISYUI_LATEST_VERSION |" >> $GITHUB_STEP_SUMMARY
+
+  # Trigger the release workflow
+  release:
+    needs: check
+    if: ${{ needs.check.outputs.release-tailwind == 'true' || needs.check.outputs.release-daisyui == 'true' }}
+    uses: ./.github/workflows/create-release.yml
+    secrets:
+      ACTIONS_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
