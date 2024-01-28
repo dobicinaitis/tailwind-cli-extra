@@ -5,7 +5,7 @@ the [releases](https://github.com/dobicinaitis/tailwind-cli-extra/releases/lates
 
 ```bash
 # Linux x64 example
-curl -sL https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/latest/tailwindcss-extra-linux-x64 -o /tmp/tailwindcss-extra
+curl -sL https://github.com/dobicinaitis/tailwind-cli-extra/releases/latest/download/tailwindcss-extra-linux-x64 -o /tmp/tailwindcss-extra
 ```
 
 Make the file executable:
