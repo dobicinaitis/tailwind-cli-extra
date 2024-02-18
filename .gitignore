@@ -1,2 +1,5 @@
 # editors
 .idea
+
+# build artifacts
+/*.snap

@@ -1,0 +1,53 @@
+name: tailwindcss-extra
+version: '1.1.2'
+summary: Tailwind CSS standalone CLI (extra)
+description: |
+  Repackaged Tailwind CSS standalone CLI that comes bundled with
+  daisyUI - the most popular component library for Tailwind CSS.
+source-code: https://github.com/dobicinaitis/tailwind-cli-extra
+icon: snap/logo.png
+license: MIT
+
+base: core22
+grade: stable
+confinement: strict
+
+architectures:
+  - build-on: amd64
+  - build-on: arm64
+
+parts:
+  tailwindcss-extra:
+    plugin: dump
+    source: .
+    build-packages:
+      - curl
+    override-build: |
+      BASE_URL="https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v$SNAPCRAFT_PROJECT_VERSION"
+      EXECUTABLE_PATH="$SNAPCRAFT_PART_INSTALL/tailwindcss-extra"
+
+      case "$SNAPCRAFT_ARCH_TRIPLET" in
+        x86_64-linux-gnu)
+          DOWNLOAD_URL="$BASE_URL/tailwindcss-extra-linux-x64" ;;
+        aarch64-linux-gnu)
+          DOWNLOAD_URL="$BASE_URL/tailwindcss-extra-linux-arm64" ;;
+        *)
+          echo "Target architecture [$SNAPCRAFT_ARCH_TRIPLET] is not supported. Exiting."
+          exit 1 ;;
+      esac
+
+      curl -sSL $DOWNLOAD_URL -o $EXECUTABLE_PATH
+      chmod +x $EXECUTABLE_PATH
+
+      # add the tab completion script
+      cp snap/completer.sh $SNAPCRAFT_PART_INSTALL/
+    stage:
+      - tailwindcss-extra
+      - completer.sh
+
+apps:
+  tailwindcss-extra:
+    command: tailwindcss-extra
+    completer: completer.sh
+    plugs:
+      - home
