@@ -113,5 +113,4 @@ jobs:
     needs: check
     if: ${{ needs.check.outputs.release-tailwind == 'true' || needs.check.outputs.release-daisyui == 'true' }}
     uses: ./.github/workflows/create-release.yml
-    secrets:
-      ACTIONS_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+    secrets: inherit

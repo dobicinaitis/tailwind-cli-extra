@@ -113,7 +113,7 @@ print_changelog() {
     commits=$(eval "$gitLogCommand" "$commitRange")
     changelog="## Release notes 🎁\n### Changes\n${commits}\n"
     # exclude unwanted stuff
-    changelog=$(echo -e "$changelog" | sed -E '/cleanup:/d')
+    changelog=$(echo -e "$changelog" | sed -E '/(cleanup|chore|ci):/d')
     # remove conventional commit types
     changelog=$(echo -e "$changelog" | sed -E 's/(^- )(.{0,17}!?: )/\1/')
     echo -e "$changelog"
