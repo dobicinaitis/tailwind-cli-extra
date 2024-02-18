@@ -4,7 +4,7 @@ summary: Tailwind CSS standalone CLI (extra)
 description: |
   Repackaged Tailwind CSS standalone CLI that comes bundled with
   daisyUI - the most popular component library for Tailwind CSS.
-source-code: https://github.com/dobicinaitis/tailwind-cli-extra
+website: https://github.com/dobicinaitis/tailwind-cli-extra
 icon: snap/logo.png
 license: MIT
 
