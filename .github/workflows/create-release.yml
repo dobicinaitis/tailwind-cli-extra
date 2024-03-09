@@ -17,7 +17,7 @@ jobs:
       - name: Get latest changes # workaround to get the commits just pushed by the calling workflow 🤨
         run: |
           git fetch
-          git checkout ${GITHUB_REF##*/}
+          git checkout ${GITHUB_REF##*[refs, heads, tags]/}
           git pull
 
       - name: Load properties file
@@ -151,7 +151,7 @@ jobs:
 
       - name: Get latest changes # workaround (see above)
         run: |
-          RELEASE_BRANCH="${GITHUB_REF##*/}"
+          RELEASE_BRANCH="${GITHUB_REF##*[refs, heads, tags]/}"
           git checkout $RELEASE_BRANCH
           git pull
           echo "RELEASE_BRANCH=$RELEASE_BRANCH" >> $GITHUB_ENV
@@ -215,7 +215,7 @@ jobs:
 
       - name: Get latest changes # workaround (see above)
         run: |
-          RELEASE_BRANCH="${GITHUB_REF##*/}"
+          RELEASE_BRANCH="${GITHUB_REF##*[refs, heads, tags]/}"
           git checkout $RELEASE_BRANCH
           git pull
 
