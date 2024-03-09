@@ -85,9 +85,14 @@ jobs:
           node ./scripts/swap-engines.js
         working-directory: tailwindcss
 
-      - name: Install dependencies
+      - name: Install Tailwind CSS dependencies
         run: npm install
         working-directory: tailwindcss
+
+      - name: Install ldid # a utility needed to sign macOS binaries on Linux
+        uses: MOZGIII/install-ldid-action@v1
+        with:
+          tag: v2.1.5-procursus2
 
       - name: Build Tailwind CSS
         run: npm run build
