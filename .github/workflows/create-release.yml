@@ -80,11 +80,6 @@ jobs:
           node-version: 16
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Use the `stable` engine
-        run: |
-          node ./scripts/swap-engines.js
-        working-directory: tailwindcss
-
       - name: Install Tailwind CSS dependencies
         run: npm install
         working-directory: tailwindcss
