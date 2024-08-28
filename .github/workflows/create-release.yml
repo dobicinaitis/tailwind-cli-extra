@@ -104,6 +104,7 @@ jobs:
       - name: Add daisyUI to standalone.js
         run: |
           sed -i "/let localModules/a \  daisyui: require('daisyui')," standalone.js
+          sed -i "/daisyui:/a \  'daisyui/src/theming/themes': require('daisyui/src/theming/themes')," standalone.js
         working-directory: tailwindcss/standalone-cli
 
       - name: Build standalone cli
@@ -127,7 +128,8 @@ jobs:
           chmod +x tailwindcss-extra
           ./tailwindcss-extra --content daisyui-components.html | grep badge-primary || exit 1
           ./tailwindcss-extra --content daisyui-components.html | grep loading-dots || exit 1
-          ./tailwindcss-extra --content daisyui-components.html | grep progress  || exit 1
+          ./tailwindcss-extra --content daisyui-components.html | grep progress || exit 1
+          ./tailwindcss-extra --content daisyui-components.html | grep '\-\-bc: 0% 0 0;' || exit 1
         working-directory: test
 
       - name: Save release artifacts

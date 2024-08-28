@@ -3,7 +3,16 @@ export default {
     theme: {
         extend: {}
     },
-    // add the daisyUI plugin
-    plugins: [require("daisyui")]
+    plugins: [require("daisyui")],
+    daisyui: {
+        themes: [
+            {
+                light: {
+                    ...require("daisyui/src/theming/themes")["light"],
+                    "base-content": "#000000"
+                },
+            },
+        ],
+    }
 }
 
