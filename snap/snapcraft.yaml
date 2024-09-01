@@ -5,7 +5,7 @@ description: |
   Repackaged Tailwind CSS standalone CLI that comes bundled with
   daisyUI - the most popular component library for Tailwind CSS.
 website: https://github.com/dobicinaitis/tailwind-cli-extra
-icon: snap/logo.png
+icon: snap/local/logo.png
 license: MIT
 
 base: core22
@@ -40,7 +40,7 @@ parts:
       chmod +x $EXECUTABLE_PATH
 
       # add the tab completion script
-      cp snap/completer.sh $SNAPCRAFT_PART_INSTALL/
+      cp snap/local/completer.sh $SNAPCRAFT_PART_INSTALL/
     stage:
       - tailwindcss-extra
       - completer.sh
