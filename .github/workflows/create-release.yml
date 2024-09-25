@@ -218,7 +218,7 @@ jobs:
 
       - name: Build snap package
         id: snapcraft
-        uses: snapcore/action-build@v1
+        uses: canonical/action-build@v1
 
       - name: Test snap
         run: |
@@ -227,7 +227,7 @@ jobs:
           tailwindcss-extra --content daisyui-components.html | grep badge-primary || exit 1
 
       - name: Publish snap
-        uses: snapcore/action-publish@v1
+        uses: canonical/action-publish@v1
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
         with:
