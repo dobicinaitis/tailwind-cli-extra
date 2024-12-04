@@ -62,3 +62,12 @@ Get it from the [Snap Store](https://snapcraft.io/tailwindcss-extra) or install 
 ```bash
 sudo snap install tailwindcss-extra
 ```
+
+**AUR package**
+
+Get it from the [Arch User Repository](https://aur.archlinux.org/packages/tailwindcss-extra-bin) or install using your chosen AUR helper:
+
+
+```bash
+yay -S tailwindcss-extra-bin
+```
