@@ -7,6 +7,10 @@ the most popular component library for Tailwind CSS.
 This repository employs [GitHub Actions](https://github.com/dobicinaitis/tailwind-cli-extra/actions)
 to generate patched versions of the upstream CLI tool whenever a new version of Tailwind CSS or daisyUI is released.
 
+> [!NOTE]
+> Automatic upgrades are currently paused. A new version, built using Tailwind v4,
+> will be made available after the stable version of daisyUI v5 is released.
+
 ## Usage
 
 * Download the latest executable from
