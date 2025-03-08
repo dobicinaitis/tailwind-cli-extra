@@ -3,11 +3,19 @@ on:
   workflow_call:
   workflow_dispatch:
 
+env:
+  APP_NAME: tailwindcss-oxide
+  NODE_VERSION: 20
+  OXIDE_LOCATION: ./crates/node
+
 jobs:
-  # Re-package Tailwind CSS standalone CLI
-  build-patched-cli:
+  # Checks for changes to Tailwind CSS build files and exports variables needed by other jobs
+  prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    outputs:
+      tailwind-repository: ${{ steps.export.outputs.tailwind-repository }}
+      tailwind-version: ${{ steps.export.outputs.tailwind-version }}
+      daisyui-version: ${{ steps.export.outputs.daisyui-version }}
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -30,11 +38,9 @@ jobs:
         run: |
           source utils/bash_functions.sh
           check_variable TAILWIND_REPOSITORY
-          check_variable DAISYUI_REPOSITORY
-          check_variable TAILWIND_CURRENT_STANDALONE_JS_CHECKSUM
+          check_variable TAILWIND_CURRENT_INDEX_TS_CHECKSUM
           check_variable TAILWIND_CURRENT_RELEASE_WORKFLOW_CHECKSUM
           check_version_number $TAILWIND_CURRENT_VERSION
-          check_version_number $DAISYUI_CURRENT_VERSION
 
       - name: Checkout Tailwind CSS source code
         uses: actions/checkout@v4
@@ -45,13 +51,15 @@ jobs:
 
       - name: Check for important build file changes
         run: |
-          TAILWIND_LATEST_STANDALONE_JS_CHECKSUM=$(sha256sum tailwindcss/standalone-cli/standalone.js | awk '{print $1}')
-          TAILWIND_LATEST_RELEASE_WORKFLOW_CHECKSUM=$(sha256sum tailwindcss/.github/workflows/prepare-release.yml | awk '{print $1}')
-          if [ "$TAILWIND_CURRENT_STANDALONE_JS_CHECKSUM" != "$TAILWIND_LATEST_STANDALONE_JS_CHECKSUM" ]; then
-            FILENAME="standalone.js"
-            NEW_CHECKSUM="$TAILWIND_LATEST_STANDALONE_JS_CHECKSUM"
+          TAILWIND_LATEST_INDEX_PATH="packages/@tailwindcss-standalone/src/index.ts"
+          TAILWIND_LATEST_INDEX_TS_CHECKSUM=$(sha256sum tailwindcss/$TAILWIND_LATEST_INDEX_PATH | awk '{print $1}')
+          TAILWIND_LATEST_RELEASE_WORKFLOW_PATH=".github/workflows/prepare-release.yml"
+          TAILWIND_LATEST_RELEASE_WORKFLOW_CHECKSUM=$(sha256sum tailwindcss/$TAILWIND_LATEST_RELEASE_WORKFLOW_PATH | awk '{print $1}')
+          if [ "$TAILWIND_CURRENT_INDEX_TS_CHECKSUM" != "$TAILWIND_LATEST_INDEX_TS_CHECKSUM" ]; then
+            FILENAME="$TAILWIND_LATEST_INDEX_PATH"
+            NEW_CHECKSUM="$TAILWIND_LATEST_INDEX_TS_CHECKSUM"
           elif [ "$TAILWIND_CURRENT_RELEASE_WORKFLOW_CHECKSUM" != "$TAILWIND_LATEST_RELEASE_WORKFLOW_CHECKSUM" ]; then
-            FILENAME="prepare-release.yml"
+            FILENAME="$TAILWIND_LATEST_RELEASE_WORKFLOW_PATH"
             NEW_CHECKSUM="$TAILWIND_LATEST_RELEASE_WORKFLOW_CHECKSUM"
           else
             FILENAME=""
@@ -73,77 +81,272 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
 
-      # ⬇️ Start building & re-packaging the Tailwind CSS standalone CLI
-      - name: Use Node.js 16
-        uses: actions/setup-node@v3
+      - name: Export variables
+        id: export
+        run: |
+          echo "tailwind-repository=$TAILWIND_REPOSITORY" >> $GITHUB_OUTPUT
+          echo "tailwind-version=$TAILWIND_CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "daisyui-version=$DAISYUI_CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+  build:
+    needs: prepare
+    strategy:
+      matrix:
+        include:
+          # Windows
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          #- os: windows-latest
+          #  target: aarch64-pc-windows-msvc
+          # macOS
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            strip: strip -x # Must use -x on macOS. This produces larger results on linux.
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            page-size: 14
+            strip: strip -x # Must use -x on macOS. This produces larger results on linux.
+          ## Android
+          #- os: ubuntu-latest
+          #  target: aarch64-linux-android
+          #  strip: ${ANDROID_NDK_LATEST_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip
+          #- os: ubuntu-latest
+          #  target: armv7-linux-androideabi
+          #  strip: ${ANDROID_NDK_LATEST_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip
+          # Linux
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            strip: strip
+            container:
+              image: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            strip: llvm-strip
+            container:
+              image: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
+          #- os: ubuntu-latest
+          #  target: armv7-unknown-linux-gnueabihf
+          #  strip: llvm-strip
+          #  container:
+          #    image: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-zig
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            strip: aarch64-linux-musl-strip
+            download: true
+            container:
+              image: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            strip: strip
+            download: true
+            container:
+              image: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-alpine
+
+    name: build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
         with:
-          node-version: 16
+          repository: ${{ needs.prepare.outputs.tailwind-repository }}
+          ref: v${{ needs.prepare.outputs.tailwind-version }}
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      # Cargo already skips downloading dependencies if they already exist
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      # Cache the `oxide` Rust build
+      - name: Cache oxide build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ./oxide/target/
+            ./crates/node/*.node
+            ./crates/node/index.js
+            ./crates/node/index.d.ts
+          key: ${{ runner.os }}-${{ matrix.target }}-oxide-${{ hashFiles('./crates/**/*') }}
+
+      - name: Install Node.JS
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Rust (Stable)
+        if: ${{ matrix.download }}
+        run: |
+          rustup default stable
+
+      - name: Setup rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Install dependencies
+        run: pnpm install --ignore-scripts --filter=!./playgrounds/*
+
+      - name: Build release
+        run: pnpm run --filter ${{ env.OXIDE_LOCATION }} build
+        env:
+          RUST_TARGET: ${{ matrix.target }}
+          JEMALLOC_SYS_WITH_LG_PAGE: ${{ matrix.page-size }}
+
+      - name: Strip debug symbols # https://github.com/rust-lang/rust/issues/46034
+        if: ${{ matrix.strip }}
+        run: ${{ matrix.strip }} ${{ env.OXIDE_LOCATION }}/*.node
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bindings-${{ matrix.target }}
+          path: ${{ env.OXIDE_LOCATION }}/*.node
+
+  package:
+    needs:
+      - prepare
+      - build
+    runs-on: macos-14
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.prepare.outputs.tailwind-repository }}
+          ref: v${{ needs.prepare.outputs.tailwind-version }}
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Install Tailwind CSS dependencies
-        run: npm install
-        working-directory: tailwindcss
-
-      - name: Install ldid # a utility needed to sign macOS binaries on Linux
-        uses: MOZGIII/install-ldid-action@v1
+      # Cargo already skips downloading dependencies if they already exist
+      - name: Cache cargo
+        uses: actions/cache@v4
         with:
-          tag: v2.1.5-procursus2
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Build Tailwind CSS
-        run: npm run build
-        working-directory: tailwindcss
+      # Cache the `oxide` Rust build
+      - name: Cache oxide build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ./oxide/target/
+            ./crates/node/*.node
+            ./crates/node/index.js
+            ./crates/node/index.d.ts
+          key: ${{ runner.os }}-${{ matrix.target }}-oxide-${{ hashFiles('./crates/**/*') }}
 
-      - name: Install standalone cli dependencies
-        run: npm install
-        working-directory: tailwindcss/standalone-cli
+      - name: Install dependencies
+        run: pnpm --filter=!./playgrounds/* install
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ env.OXIDE_LOCATION }}
+
+      - name: Move artifacts
+        run: |
+          cd ${{ env.OXIDE_LOCATION }}
+          cp bindings-x86_64-pc-windows-msvc/* ./npm/win32-x64-msvc/
+          # cp bindings-aarch64-pc-windows-msvc/* ./npm/win32-arm64-msvc/
+          cp bindings-x86_64-apple-darwin/* ./npm/darwin-x64/
+          cp bindings-aarch64-apple-darwin/* ./npm/darwin-arm64/
+          # cp bindings-aarch64-linux-android/* ./npm/android-arm64/
+          # cp bindings-armv7-linux-androideabi/* ./npm/android-arm-eabi/
+          cp bindings-aarch64-unknown-linux-gnu/* ./npm/linux-arm64-gnu/
+          cp bindings-aarch64-unknown-linux-musl/* ./npm/linux-arm64-musl/
+          # cp bindings-armv7-unknown-linux-gnueabihf/* ./npm/linux-arm-gnueabihf/
+          cp bindings-x86_64-unknown-linux-gnu/* ./npm/linux-x64-gnu/
+          cp bindings-x86_64-unknown-linux-musl/* ./npm/linux-x64-musl/
+          # cp bindings-x86_64-unknown-freebsd/* ./npm/freebsd-x64/
 
       - name: Add the daisyUI dependency
-        run: npm install -D daisyui@$DAISYUI_CURRENT_VERSION
-        working-directory: tailwindcss/standalone-cli
+        run: pnpm i -D daisyui@${{ needs.prepare.outputs.daisyui-version }}
+        working-directory: packages/@tailwindcss-standalone
 
-      - name: Add daisyUI to standalone.js
+      - name: Add daisyUI to 'packages/@tailwindcss-standalone/src/index.ts'
         run: |
-          sed -i "/let localModules/a \  daisyui: require('daisyui')," standalone.js
-          sed -i "/daisyui:/a \  'daisyui/src/theming/themes': require('daisyui/src/theming/themes')," standalone.js
-        working-directory: tailwindcss/standalone-cli
+          curl -sL "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref }}/patch/add-daisyui.patch" | git apply
 
-      - name: Build standalone cli
-        run: npm run build
-        working-directory: tailwindcss/standalone-cli
+      - name: Build Tailwind CSS
+        run: pnpm run build
+        env:
+          FEATURES_ENV: stable
 
       - name: Rename binaries
         run: |
           mv tailwindcss-linux-arm64 tailwindcss-extra-linux-arm64
-          mv tailwindcss-linux-armv7 tailwindcss-extra-linux-armv7
+          mv tailwindcss-linux-arm64-musl tailwindcss-extra-linux-arm64-musl
           mv tailwindcss-linux-x64 tailwindcss-extra-linux-x64
+          mv tailwindcss-linux-x64-musl tailwindcss-extra-linux-x64-musl
           mv tailwindcss-macos-arm64 tailwindcss-extra-macos-arm64
           mv tailwindcss-macos-x64 tailwindcss-extra-macos-x64
           mv tailwindcss-windows-x64.exe tailwindcss-extra-windows-x64.exe
-          mv tailwindcss-windows-arm64.exe tailwindcss-extra-windows-arm64.exe
-        working-directory: tailwindcss/standalone-cli/dist
-
-      - name: Test
-        run: |
-          cp ../tailwindcss/standalone-cli/dist/tailwindcss-extra-linux-x64 tailwindcss-extra
-          chmod +x tailwindcss-extra
-          ./tailwindcss-extra --content daisyui-components.html | grep badge-primary || exit 1
-          ./tailwindcss-extra --content daisyui-components.html | grep loading-dots || exit 1
-          ./tailwindcss-extra --content daisyui-components.html | grep progress || exit 1
-          ./tailwindcss-extra --content daisyui-components.html | grep '\-\-bc: 0% 0 0;' || exit 1
-        working-directory: test
+        working-directory: packages/@tailwindcss-standalone/dist
 
       - name: Save release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: tailwindcss-extra
-          path: tailwindcss/standalone-cli/dist/tailwindcss-extra-*
+          path: packages/@tailwindcss-standalone/dist/tailwindcss-extra-*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test:
+    runs-on: ubuntu-latest
+    needs: package
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.GITHUB_REF }}
+          fetch-depth: 0
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tailwindcss-extra
+          run-id: ${{ github.run_id }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test
+        run: |
+          mv ../tailwindcss-extra-linux-x64 tailwindcss-extra
+          chmod +x tailwindcss-extra
+          ./tailwindcss-extra --input input.css --content daisyui-components.html | grep badge-primary || exit 1
+          ./tailwindcss-extra --input input.css --content daisyui-components.html | grep loading-dots || exit 1
+          ./tailwindcss-extra --input input.css --content daisyui-components.html | grep progress || exit 1
+          ./tailwindcss-extra --input input.css --content daisyui-components.html | grep '\-\-color\-primary: teal' || exit 1
+        working-directory: test
 
   # Create a new GitHub release
   create-github-release:
     runs-on: ubuntu-latest
-    needs: build-patched-cli
+    needs: test
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -224,7 +427,7 @@ jobs:
         run: |
           sudo snap install --dangerous ${{ steps.snapcraft.outputs.snap }}
           cd test
-          tailwindcss-extra --content daisyui-components.html | grep badge-primary || exit 1
+          tailwindcss-extra --input input.css --content daisyui-components.html | grep badge-primary || exit 1
 
       - name: Publish snap
         uses: canonical/action-publish@v1

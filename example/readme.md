@@ -15,10 +15,10 @@ chmod +x /tmp/tailwindcss-extra
 ```
 
 Use the CLI tool to scan [demo.html](demo.html) for Tailwind CSS and daisyUI classes,
-and populate [style.css](style.css) with the utilized utility classes.
+and populate [output.css](output.css) with the utilized utility classes.
 
 ```bash
-/tmp/tailwindcss-extra --content demo.html --output style.css
+/tmp/tailwindcss-extra --input input.css --output output.css
 ```
 
 Open [demo.html](demo.html) in a browser to see the result.

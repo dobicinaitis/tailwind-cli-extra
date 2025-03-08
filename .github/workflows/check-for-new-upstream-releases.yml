@@ -6,6 +6,9 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}
+
 env:
   LOCK_REASON: ${{ vars.WORKFLOW_LOCK_REASON }}
 

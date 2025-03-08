@@ -136,11 +136,11 @@ print_download_list() {
     printf "\n### Downloads\n%s&ensp;%s&ensp;%s&ensp;%s&ensp;%s&ensp;%s&ensp;%s\n" \
         "$(format_download_badge Linux x64 black linux "$tag")" \
         "$(format_download_badge Linux arm64 black linux "$tag")" \
-        "$(format_download_badge Linux armv7 black linux "$tag")" \
+        "$(format_download_badge Linux x64--musl black linux "$tag")" \
+        "$(format_download_badge Linux arm64--musl black linux "$tag")" \
         "$(format_download_badge macOS x64 white apple "$tag")" \
         "$(format_download_badge macOS arm64 white apple "$tag")" \
-        "$(format_download_badge Windows x64 0078D4 windows "$tag" ".exe")" \
-        "$(format_download_badge Windows arm64 0078D4 windows "$tag" ".exe")"
+        "$(format_download_badge Windows x64 0078D4 windows "$tag" ".exe")"
 }
 
 format_download_badge() {
