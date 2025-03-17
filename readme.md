@@ -9,8 +9,20 @@ to generate patched versions of the upstream CLI tool whenever a new version of 
 
 ## Usage
 
-* Download the latest executable from
+* Download the latest binary from
   the [releases](https://github.com/dobicinaitis/tailwind-cli-extra/releases/latest) page.
+
+* Make it executable:
+
+  ```bash
+  chmod +x ./tailwindcss-extra*
+  ```
+
+  macOS users may also need to remove the quarantine attribute:
+
+  ```bash
+  xattr -d com.apple.quarantine ./tailwindcss-extra*
+  ```
 
 * Add the daisyUI plugin to your main CSS file:
 
