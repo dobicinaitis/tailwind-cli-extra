@@ -46,7 +46,7 @@ to generate patched versions of the upstream CLI tool whenever a new version of 
 ## Current versions
 
 [![](https://img.shields.io/badge/Tailwind%20CSS-v4.1.16-06B6D4?logo=tailwind-css&logoColor=06B6D4)](https://github.com/tailwindlabs/tailwindcss/releases/tag/v4.1.16)
-[![](https://img.shields.io/badge/daisyUI-v5.3.11-1ad1a5?logo=daisyui&logoColor=1ad1a5)](https://github.com/saadeghi/daisyui/releases/tag/v5.3.11)
+[![](https://img.shields.io/badge/daisyUI-v5.4.2-1ad1a5?logo=daisyui&logoColor=1ad1a5)](https://github.com/saadeghi/daisyui/releases/tag/v5.4.2)
 
 ## Downloads
 
