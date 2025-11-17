@@ -60,6 +60,15 @@ to generate patched versions of the upstream CLI tool whenever a new version of 
 [![](https://img.shields.io/badge/macOS-arm64-white?logo=apple&logoColor=white)](https://github.com/dobicinaitis/tailwind-cli-extra/releases/latest/download/tailwindcss-extra-macos-arm64)
 [![](https://img.shields.io/badge/Windows-x64-0078D4?logo=windows&logoColor=0078D4)](https://github.com/dobicinaitis/tailwind-cli-extra/releases/latest/download/tailwindcss-extra-windows-x64.exe)
 
+**Homebrew tap**
+
+Install using [Homebrew](https://brew.sh/) on macOS or Linux:
+
+```bash
+brew tap dobicinaitis/tailwind-cli-extra https://github.com/dobicinaitis/tailwind-cli-extra.git
+brew install tailwindcss-extra
+```
+
 **Snap package**
 
 Get it from the [Snap Store](https://snapcraft.io/tailwindcss-extra) or install using the command line:

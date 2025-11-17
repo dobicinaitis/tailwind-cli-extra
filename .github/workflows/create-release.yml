@@ -387,14 +387,6 @@ jobs:
           token: ${{ github.token }}
           branch: ${{ env.RELEASE_BRANCH }}
 
-      - name: Download release artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: tailwindcss-extra
-          run-id: ${{ github.run_id }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Create changelog
         run: |
           source utils/bash_functions.sh
@@ -407,10 +399,33 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "<>"
 
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tailwindcss-extra
+          run-id: ${{ github.run_id }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package Homebrew artifacts
+        run: |
+          source utils/bash_functions.sh
+          new_version="${{ steps.semver.outputs.nextStrict }}"
+          update_homebrew_formula_version ${new_version}
+          package_homebrew_bottle ${new_version} tailwindcss-extra-macos-arm64 arm64_tahoe
+          package_homebrew_bottle ${new_version} tailwindcss-extra-macos-arm64 arm64_sequoia
+          package_homebrew_bottle ${new_version} tailwindcss-extra-macos-arm64 arm64_sonoma
+          package_homebrew_bottle ${new_version} tailwindcss-extra-macos-x64   sonoma
+          package_homebrew_bottle ${new_version} tailwindcss-extra-linux-arm64 arm64_linux
+          package_homebrew_bottle ${new_version} tailwindcss-extra-linux-x64   x86_64_linux
+          git commit -am "chore: updated Homebrew bottle hashes for version ${new_version}"
+
       - name: Update release version in build files
         run: |
-          sed -i -r "s/(^version: ')(.*)('$)/\1${{ steps.semver.outputs.nextStrict }}\3/" snap/snapcraft.yaml
-          git commit -am "chore: bumped release version to ${{ steps.semver.outputs.nextStrict }}"
+          source utils/bash_functions.sh
+          new_version="${{ steps.semver.outputs.nextStrict }}"
+          update_snap_version ${new_version}
+          git commit -am "chore: bumped release version to ${new_version}"
           git push
 
       - name: Release

@@ -1,6 +1,8 @@
 #!/bin/bash
 # Utility functions used within GitHub action workflows.
 
+REPO_BASE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")"/.. &>/dev/null && pwd)
+
 # Check if a variable is set and not empty.
 check_variable() {
     local variable=$1
@@ -120,8 +122,7 @@ print_changelog() {
 }
 
 print_version_table() {
-    SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-    source "$SCRIPT_DIR"/../properties.env
+    source "$REPO_BASE_DIR/properties.env"
 
     echo -e "\n### Versions" \
         "\n| Component | Version |" \
@@ -153,4 +154,42 @@ format_download_badge() {
     printf "[![](%s)](%s)" \
         "https://img.shields.io/badge/$os-$arhitecture-$color?logo=$logo&logoColor=$color" \
         "https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/$tag/tailwindcss-extra-${os,,}-$arhitecture$extension"
+}
+
+package_homebrew_bottle() {
+    local version=$1
+    local source_binary_path=$2
+    local arch_string=$3
+    local archive_name="tailwindcss-extra-${version}.${arch_string}.bottle.tar.gz"
+    tmp_dir=$(mktemp -d)
+    target_directory="${tmp_dir}/tailwindcss-extra/${version}/bin"
+
+    mkdir -p "${target_directory}"
+    cp "${source_binary_path}" "${target_directory}"/tailwindcss-extra
+    chmod 0755 "${target_directory}"/tailwindcss-extra
+    tar -czvf "${archive_name}" -C "${tmp_dir}" tailwindcss-extra
+
+    update_homebrew_bottle_hash "${archive_name}" "${arch_string}"
+}
+
+update_homebrew_bottle_hash() {
+    local archive_name=$1
+    local arch_string=$2
+    local formula_path="$REPO_BASE_DIR/Formula/tailwindcss-extra.rb"
+    oldHash="$(sed -nE "s/.*sha256 .*[[:space:]]${arch_string}:[[:space:]]+\"([a-f0-9]+)\".*/\1/p" "$formula_path")"
+    newHash="$(sha256sum "${archive_name}" | awk '{print $1}')"
+    sed -i "s/${oldHash}/${newHash}/" "$formula_path"
+}
+
+update_homebrew_formula_version() {
+    local newVersion=$1
+    local file_path="$REPO_BASE_DIR/Formula/tailwindcss-extra.rb"
+    oldVersion="$(sed -nE 's/.*version "([0-9]+\.[0-9]+\.[0-9]+)".*/\1/p' "$file_path")"
+    sed -i "s/${oldVersion}/${newVersion}/g" "$file_path"
+}
+
+update_snap_version() {
+    local newVersion=$1
+    local file_path="$REPO_BASE_DIR/snap/snapcraft.yaml"
+    sed -i -r "s/(^version: ')(.*)('$)/\1${newVersion}\3/" "$file_path"
 }
