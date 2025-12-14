@@ -1,5 +1,5 @@
 name: tailwindcss-extra
-version: '2.7.4'
+version: '2.7.5'
 summary: Tailwind CSS standalone CLI (extra)
 description: |
   Repackaged Tailwind CSS standalone CLI that comes bundled with
