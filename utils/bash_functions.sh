@@ -185,7 +185,8 @@ update_homebrew_formula_version() {
     local newVersion=$1
     local file_path="$REPO_BASE_DIR/Formula/tailwindcss-extra.rb"
     oldVersion="$(sed -nE 's/.*version "([0-9]+\.[0-9]+\.[0-9]+)".*/\1/p' "$file_path")"
-    sed -i "s/${oldVersion}/${newVersion}/g" "$file_path"
+    oldVersionEscaped=$(printf '%s\n' "$oldVersion" | sed 's/\./\\./g')
+    sed -i "s/${oldVersionEscaped}/${newVersion}/g" "$file_path"
 }
 
 update_snap_version() {
