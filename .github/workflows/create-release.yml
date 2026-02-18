@@ -5,7 +5,7 @@ on:
 
 env:
   APP_NAME: tailwindcss-oxide
-  NODE_VERSION: 20
+  NODE_VERSION: 24
   OXIDE_LOCATION: ./crates/node
 
 jobs:
@@ -18,7 +18,7 @@ jobs:
       daisyui-version: ${{ steps.export.outputs.daisyui-version }}
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ env.GITHUB_REF }}
 
@@ -43,7 +43,7 @@ jobs:
           check_version_number $TAILWIND_CURRENT_VERSION
 
       - name: Checkout Tailwind CSS source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ env.TAILWIND_REPOSITORY }}
           ref: v${{ env.TAILWIND_CURRENT_VERSION }}
@@ -147,7 +147,7 @@ jobs:
     container: ${{ matrix.container }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: ${{ needs.prepare.outputs.tailwind-repository }}
           ref: v${{ needs.prepare.outputs.tailwind-version }}
@@ -155,7 +155,7 @@ jobs:
       - uses: pnpm/action-setup@v4
 
       - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
@@ -168,7 +168,7 @@ jobs:
 
       # Cargo already skips downloading dependencies if they already exist
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/bin/
@@ -180,7 +180,7 @@ jobs:
 
       # Cache the `oxide` Rust build
       - name: Cache oxide build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ./crates/node/*.node
@@ -195,7 +195,7 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.target }}-oxide-${{ hashFiles('./crates/**/*') }}
 
       - name: Install Node.JS
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -221,7 +221,7 @@ jobs:
         run: ${{ matrix.strip }} ${{ env.OXIDE_LOCATION }}/*.node
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: bindings-${{ matrix.target }}
           path: ${{ env.OXIDE_LOCATION }}/*.node
@@ -233,7 +233,7 @@ jobs:
     runs-on: macos-14
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: ${{ needs.prepare.outputs.tailwind-repository }}
           ref: v${{ needs.prepare.outputs.tailwind-version }}
@@ -241,7 +241,7 @@ jobs:
       - uses: pnpm/action-setup@v4
 
       - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
@@ -249,7 +249,7 @@ jobs:
 
       # Cargo already skips downloading dependencies if they already exist
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/bin/
@@ -261,7 +261,7 @@ jobs:
 
       # Cache the `oxide` Rust build
       - name: Cache oxide build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ./crates/node/*.node
@@ -282,7 +282,7 @@ jobs:
         run: pnpm --filter=!./playgrounds/* install
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: ${{ env.OXIDE_LOCATION }}
 
@@ -327,7 +327,7 @@ jobs:
         working-directory: packages/@tailwindcss-standalone/dist
 
       - name: Save release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: tailwindcss-extra
           path: packages/@tailwindcss-standalone/dist/tailwindcss-extra-*
@@ -339,13 +339,13 @@ jobs:
     needs: package
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ env.GITHUB_REF }}
           fetch-depth: 0
 
       - name: Download release artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: tailwindcss-extra
           run-id: ${{ github.run_id }}
@@ -368,7 +368,7 @@ jobs:
     needs: test
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ env.GITHUB_REF }}
           fetch-depth: 0
@@ -400,7 +400,7 @@ jobs:
           git config --global user.email "<>"
 
       - name: Download release artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: tailwindcss-extra
           run-id: ${{ github.run_id }}
@@ -442,7 +442,7 @@ jobs:
     needs: create-github-release
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ env.GITHUB_REF }}
           fetch-depth: 0
