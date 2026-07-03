@@ -26,7 +26,7 @@ index be85729b..756117da 100644
 +  } else if (id.endsWith('daisyui')) {
 +    return require('daisyui')
 +  } else if (id.endsWith('daisyui/theme')) {
-+    return require('daisyui/theme')
++    return require('daisyui/theme/index.js')
    } else {
      return undefined
    }
