@@ -1,18 +1,18 @@
 class TailwindcssExtra < Formula
   desc "Tailwind CSS standalone CLI (extra)"
   homepage "https://github.com/dobicinaitis/tailwind-cli-extra"
-  url "https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.10.1/tailwindcss-extra-2.10.1.arm64_tahoe.bottle.tar.gz"
-  sha256 "ce8e64a2c7034eb2cac4ddef1ccf0b9234dfdce997b7244563741c51f6afadc9"
-  version "2.10.1"
+  url "https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.10.2/tailwindcss-extra-2.10.2.arm64_tahoe.bottle.tar.gz"
+  sha256 "ba118a6793ea753df3ea559f10a113394136814e615e1c91bd434da66f52dd45"
+  version "2.10.2"
 
   bottle do
-    root_url "https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.10.1"
-    sha256 cellar: :any_skip_relocation, arm64_tahoe:   "ce8e64a2c7034eb2cac4ddef1ccf0b9234dfdce997b7244563741c51f6afadc9"
-    sha256 cellar: :any_skip_relocation, arm64_sequoia: "d09cc5334fc38b806794437c4224d01016d214bb77efb8454ae14efd10eea5df"
-    sha256 cellar: :any_skip_relocation, arm64_sonoma:  "0ef006c6ab2be054b1b3433374754ec5d2e15f36b0aa959dfb403afabeb5cab5"
-    sha256 cellar: :any_skip_relocation, sonoma:        "0fcab9a0b6f983f6ab3e11949c1a644ca1c6c467751dc6aff45c72bf494ae655"
-    sha256 cellar: :any_skip_relocation, arm64_linux:   "6eb8c84e1fbfbcaf7ecf9dce51f5ae9fb3e10a6149032e238e1ffcb9e89431b1"
-    sha256 cellar: :any_skip_relocation, x86_64_linux:  "c0926adb2f9f8c01fe0416980a035f7581aadcf322740a995489ef4bfe60c813"
+    root_url "https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.10.2"
+    sha256 cellar: :any_skip_relocation, arm64_tahoe:   "ba118a6793ea753df3ea559f10a113394136814e615e1c91bd434da66f52dd45"
+    sha256 cellar: :any_skip_relocation, arm64_sequoia: "230887a4c782108382823aef62708a9191bddb6cfc648245be63ab46c6eb8494"
+    sha256 cellar: :any_skip_relocation, arm64_sonoma:  "4550fb814c9a9b087b66beee4ba252878977955488813659d6ed53f70b794bec"
+    sha256 cellar: :any_skip_relocation, sonoma:        "cfcf608364988db7fb57d14ca831780b06e08190585c38a3eda7943d35599d56"
+    sha256 cellar: :any_skip_relocation, arm64_linux:   "81799264b10fde2294fca1c7bd7e169b41d1a9323e5b8f46555a0fedc36c8677"
+    sha256 cellar: :any_skip_relocation, x86_64_linux:  "faa6f6e140507e93f545badf46881e89c45dea05335f957bc341d350fb39dd46"
   end
 
   def install
